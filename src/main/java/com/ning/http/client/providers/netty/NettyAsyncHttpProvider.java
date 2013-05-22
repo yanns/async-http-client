@@ -566,10 +566,10 @@ public class NettyAsyncHttpProvider extends SimpleChannelUpstreamHandler impleme
             int requestTimeout = requestTimeoutInMs(config, future.getRequest().getPerRequestConfig());
             int schedulePeriod = requestTimeout != -1 ? (config.getIdleConnectionTimeoutInMs() != -1 ? Math.min(requestTimeout, config.getIdleConnectionTimeoutInMs()) : requestTimeout) : config.getIdleConnectionTimeoutInMs();
             if (schedulePeriod != -1 && !future.isDone() && !future.isCancelled()) {
-                ReaperFuture reaperFuture = new ReaperFuture(future);
-                Future<?> scheduledFuture = config.reaper().scheduleAtFixedRate(reaperFuture, 0, schedulePeriod, TimeUnit.MILLISECONDS);
-                reaperFuture.setScheduledFuture(scheduledFuture);
-                future.setReaperFuture(reaperFuture);
+                Reaper reaper = new Reaper(future);
+                Future<?> scheduledFuture = config.reaper().scheduleAtFixedRate(reaper, 0, schedulePeriod, TimeUnit.MILLISECONDS);
+                reaper.setScheduledFuture(scheduledFuture);
+                future.setReaper(reaper);
             }
         } catch (RejectedExecutionException ex) {
             abort(future, ex);
@@ -866,7 +866,7 @@ public class NettyAsyncHttpProvider extends SimpleChannelUpstreamHandler impleme
                 ChannelHandlerContext ctx = channel.getPipeline().getContext(NettyAsyncHttpProvider.class);
                 if (ctx.getAttachment() instanceof NettyResponseFuture<?>) {
                     NettyResponseFuture<?> future = (NettyResponseFuture<?>) ctx.getAttachment();
-                    future.setReaperFuture(null);
+                    future.setReaper(null);
                 }
             }
 
@@ -1726,11 +1726,11 @@ public class NettyAsyncHttpProvider extends SimpleChannelUpstreamHandler impleme
      * Because some implementation of the ThreadSchedulingService do not clean up cancel task until they try to run them, we wrap the task with the future so the when the NettyResponseFuture cancel the reaper future this wrapper will release the references to the channel and the
      * nettyResponseFuture immediately. Otherwise, the memory referenced this way will only be released after the request timeout period which can be arbitrary long.
      */
-    private final class ReaperFuture implements Future, Runnable {
+    public final class Reaper implements Runnable {
         private Future scheduledFuture;
         private NettyResponseFuture<?> nettyResponseFuture;
 
-        public ReaperFuture(NettyResponseFuture<?> nettyResponseFuture) {
+        public Reaper(NettyResponseFuture<?> nettyResponseFuture) {
             this.nettyResponseFuture = nettyResponseFuture;
         }
 
@@ -1738,40 +1738,9 @@ public class NettyAsyncHttpProvider extends SimpleChannelUpstreamHandler impleme
             this.scheduledFuture = scheduledFuture;
         }
 
-        /**
-         * @Override
-         */
         public boolean cancel(boolean mayInterruptIfRunning) {
             nettyResponseFuture = null;
             return scheduledFuture.cancel(mayInterruptIfRunning);
-        }
-
-        /**
-         * @Override
-         */
-        public Object get() throws InterruptedException, ExecutionException {
-            return scheduledFuture.get();
-        }
-
-        /**
-         * @Override
-         */
-        public Object get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-            return scheduledFuture.get(timeout, unit);
-        }
-
-        /**
-         * @Override
-         */
-        public boolean isCancelled() {
-            return scheduledFuture.isCancelled();
-        }
-
-        /**
-         * @Override
-         */
-        public boolean isDone() {
-            return scheduledFuture.isDone();
         }
 
         private void expire(String message) {
@@ -1800,6 +1769,7 @@ public class NettyAsyncHttpProvider extends SimpleChannelUpstreamHandler impleme
                 if (nettyResponseFuture.hasRequestTimedOut(now))
                     message = "Request reached time out of " + nettyResponseFuture.getRequestTimeoutInMs() + " ms after " + age + " ms";
                 else
+                    // If the Reaper wakes up, there's only 2 possibilities: request timeout or idle
                     message = "Request reached idle time out of " + nettyResponseFuture.getIdleConnectionTimeoutInMs() + " ms after " + age + " ms";
                 expire(message);
 

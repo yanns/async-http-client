@@ -42,6 +42,7 @@ import com.ning.http.client.ConnectionPoolKeyStrategy;
 import com.ning.http.client.ProxyServer;
 import com.ning.http.client.Request;
 import com.ning.http.client.listenable.AbstractListenableFuture;
+import com.ning.http.client.providers.netty.NettyAsyncHttpProvider.Reaper;
 
 /**
  * A {@link Future} that can be used to track when an asynchronous HTTP request has been fully processed.
@@ -71,7 +72,7 @@ public final class NettyResponseFuture<V> extends AbstractListenableFuture<V> {
     private HttpResponse httpResponse;
     private final AtomicReference<ExecutionException> exEx = new AtomicReference<ExecutionException>();
     private final AtomicInteger redirectCount = new AtomicInteger();
-    private volatile Future<?> reaperFuture;
+    private volatile Reaper reaper;
     private final AtomicBoolean inAuth = new AtomicBoolean(false);
     private final AtomicBoolean statusReceived = new AtomicBoolean(false);
     private final AtomicLong touch = new AtomicLong(millisTime());
@@ -216,8 +217,8 @@ public final class NettyResponseFuture<V> extends AbstractListenableFuture<V> {
     }
 
     void cancelReaper() {
-        if (reaperFuture != null) {
-            reaperFuture.cancel(true);
+        if (reaper != null) {
+            reaper.cancel(true);
         }
     }
 
@@ -387,9 +388,9 @@ public final class NettyResponseFuture<V> extends AbstractListenableFuture<V> {
         return redirectCount.incrementAndGet();
     }
 
-    protected void setReaperFuture(Future<?> reaperFuture) {
+    protected void setReaper(Reaper reaper) {
         cancelReaper();
-        this.reaperFuture = reaperFuture;
+        this.reaper = reaper;
     }
 
     protected boolean isInAuth() {
@@ -520,7 +521,7 @@ public final class NettyResponseFuture<V> extends AbstractListenableFuture<V> {
                 ",\n\thttpResponse=" + httpResponse + //
                 ",\n\texEx=" + exEx + //
                 ",\n\tredirectCount=" + redirectCount + //
-                ",\n\treaperFuture=" + reaperFuture + //
+                ",\n\treaper=" + reaper + //
                 ",\n\tinAuth=" + inAuth + //
                 ",\n\tstatusReceived=" + statusReceived + //
                 ",\n\ttouch=" + touch + //
