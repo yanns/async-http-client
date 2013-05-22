@@ -260,7 +260,7 @@ public final class NettyResponseFuture<V> extends AbstractListenableFuture<V> {
         return getContent();
     }
 
-    V getContent() throws ExecutionException {
+    private V getContent() throws ExecutionException {
         ExecutionException e = exEx.getAndSet(null);
         if (e != null) {
             throw e;
