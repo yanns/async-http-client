@@ -256,11 +256,6 @@ public final class NettyResponseFuture<V> extends AbstractListenableFuture<V> {
                 }
             }
             isDone.set(true);
-
-            ExecutionException e = exEx.getAndSet(null);
-            if (e != null) {
-                throw e;
-            }
         }
         return getContent();
     }
