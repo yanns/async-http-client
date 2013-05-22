@@ -1795,14 +1795,13 @@ public class NettyAsyncHttpProvider extends SimpleChannelUpstreamHandler impleme
             if (nettyResponseFuture != null && !futureDone && !futureCanceled) {
 
                 long now = millisTime();
-                if (nettyResponseFuture.hasRequestTimedOut(now)) {
-                    long age = (now - nettyResponseFuture.getStart()) / 1000000;
-                    expire("Request reached time out of " + nettyResponseFuture.getRequestTimeoutInMs() + " ms after " + age + " ms");
-
-                } else if (nettyResponseFuture.hasConnectionIdleTimedOut(now)) {
-                    long age = (now - nettyResponseFuture.getStart()) / 1000000;
-                    expire("Request reached idle time out of " + nettyResponseFuture.getIdleConnectionTimeoutInMs() + " ms after " + age + " ms");
-                }
+                long age = (now - nettyResponseFuture.getStart()) / 1000000;
+                String message = null;
+                if (nettyResponseFuture.hasRequestTimedOut(now))
+                    message = "Request reached time out of " + nettyResponseFuture.getRequestTimeoutInMs() + " ms after " + age + " ms";
+                else
+                    message = "Request reached idle time out of " + nettyResponseFuture.getIdleConnectionTimeoutInMs() + " ms after " + age + " ms";
+                expire(message);
 
             } else if (nettyResponseFuture == null || futureDone || futureCanceled) {
                 cancel(true);
