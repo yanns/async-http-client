@@ -334,6 +334,9 @@ public final class NettyResponseFuture<V> extends AbstractListenableFuture<V> {
         if (isDone.get() || isCancelled.get())
             return;
 
+        logger.debug("Aborting Future {}\n", this);
+        logger.debug(t.getMessage(), t);
+
         exEx.compareAndSet(null, new ExecutionException(t));
         if (!throwableCalled.getAndSet(true)) {
             try {
