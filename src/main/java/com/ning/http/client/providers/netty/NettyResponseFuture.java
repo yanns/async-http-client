@@ -79,7 +79,6 @@ public final class NettyResponseFuture<V> extends AbstractListenableFuture<V> {
     private final long start = millisTime();
     private final NettyAsyncHttpProvider asyncHttpProvider;
     private final AtomicReference<STATE> state = new AtomicReference<STATE>(STATE.NEW);
-    private final AtomicBoolean contentProcessed = new AtomicBoolean(false);
     private Channel channel;
     private boolean reuseChannel = false;
     private final AtomicInteger currentRetry = new AtomicInteger(0);
@@ -269,7 +268,7 @@ public final class NettyResponseFuture<V> extends AbstractListenableFuture<V> {
         V update = content.get();
         // No more retry
         currentRetry.set(maxRetry);
-        if (exEx.get() == null && !contentProcessed.getAndSet(true)) {
+        if (exEx.get() == null && update == null) {
             try {
                 update = asyncHandler.onCompleted();
             } catch (Throwable ex) {
