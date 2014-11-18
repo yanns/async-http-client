@@ -91,10 +91,10 @@ abstract public class ChunkingTest extends AbstractBasicTest {
             builder.setUrl(getTargetUrl());
             if (customChunkedInputStream) {
                 // made buff in stream big enough to mark.
-                builder.setBody(new InputStreamBodyGenerator(new BufferedInputStream(new FileInputStream(getTestFile()), 400000)));
+                builder.setBody(new InputStreamBodyGenerator(new BufferedInputStream(getTestFile())));
             } else {
                 // made buff in stream big enough to mark.
-                builder.setBody(new InputStreamBodyGenerator(new BufferedInputStream(new FileInputStream(getTestFile()), 400000)));
+                builder.setBody(new InputStreamBodyGenerator(new BufferedInputStream(getTestFile())));
             }
             com.ning.http.client.Request r = builder.build();
             Response res = null;
@@ -148,14 +148,13 @@ abstract public class ChunkingTest extends AbstractBasicTest {
         }
     }
 
-    private static File getTestFile() {
+    private static InputStream getTestFile() {
         String testResource1 = "300k.png";
 
-        File testResource1File = null;
+        InputStream testResource1File = null;
         try {
             ClassLoader cl = ChunkingTest.class.getClassLoader();
-            URL url = cl.getResource(testResource1);
-            testResource1File = new File(url.toURI());
+            testResource1File = cl.getResourceAsStream(testResource1);
         } catch (Throwable e) {
             // TODO Auto-generated catch block
             fail("unable to find " + testResource1);
